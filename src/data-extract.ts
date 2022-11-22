@@ -20,21 +20,34 @@ export class DataExtract {
 
 		course.description = dom.window.document.querySelector('.course p').innerHTML;
 
-		this.handlePrereqs(dom, course);
-		return course;
-	}
+		dom.window.document.querySelectorAll('.course ul li')[3].querySelectorAll('a').forEach(e => {
+			e.innerHTML = e.innerHTML.split(' ').join('-');
+		});
 
-	handlePrereqs(dom: JSDOM, course: Course): CoursesRequirement {
-		const prereqElement = dom.window.document.querySelectorAll('.course ul li')[3];
+		const prereqElement: Element = dom.window.document.querySelectorAll('.course ul li')[3];
 		var textArray = this.innerText(prereqElement);
 
 		course.prereqsText = textArray.join(" ").split(':')[1];
+		
+		return course;
+	}
 
-		var finalPrereqs: CoursesRequirement = new CoursesRequirement();
+	handlePrereqs(prereqsText: string): CoursesRequirement {
+		const prereqs: CoursesRequirement = new CoursesRequirement();
 
-		if (textArray.length==1) {
-			return finalPrereqs;
+		let bufText: string = '';
+		let beginText: string = '';
+		for (let i = 0; i < prereqsText.length; i++) {
+			const indexChar: string = prereqsText.charAt(i);
+			if (indexChar == ' ') { // New word
+				beginText = bufText;
+				bufText = '';
+			}
 		}
+
+		// if (beginText.includes('either'))
+
+		return prereqs;
 
 	}
 
