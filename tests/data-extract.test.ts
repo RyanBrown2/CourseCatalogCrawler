@@ -27,7 +27,7 @@ describe('data-extract', function() {
 		
 		const testPreqs: CoursesRequirement = dataExtract.handlePrereqs(prereqText);
 		
-		expect(prereq).toEqual(testPreqs);
+		expect(testPreqs).toEqual(prereq);
 	});
 
 });

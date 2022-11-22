@@ -37,13 +37,59 @@ export class DataExtract {
 
 		let bufText: string = '';
 		let beginText: string = '';
+		const words: string[] = [];
 		for (let i = 0; i < prereqsText.length; i++) {
 			const indexChar: string = prereqsText.charAt(i);
 			if (indexChar == ' ') { // New word
 				beginText = bufText;
+				words.push(bufText);
 				bufText = '';
+				continue;
 			}
+
+			bufText += indexChar;
 		}
+
+
+		for (let i = 0; i < words.length; i++) {
+			const word: string = words.at(i);
+
+			if (word.includes(',')) {
+				const nextWord: string = words.at(i+1);
+				if (nextWord == 'and') {
+					prereqs.type = 'all';
+				}
+
+				if (nextWord == 'or') {
+					prereqs.type = 'or';
+				}
+
+				const newText: string = words.slice(i+2, words.length-1).join(' ');
+				prereqs.addReq(this.handlePrereqs(newText));
+				break;
+	
+			}
+
+			if (word == 'either') {
+				prereqs.type = 'or';
+				continue;
+			}
+
+			if (word == 'or' && prereqs.type=='or') {
+				continue;
+			}
+
+			if (word.includes('-')) { // if word is a course
+				prereqs.addCourse(word);
+				continue;
+
+			}
+
+			prereqs.setExtra(prereqs.exta + ' ' + word);
+
+		}
+
+		prereqs.setExtra(prereqs.exta.slice(1, prereqs.exta.length));
 
 		// if (beginText.includes('either'))
 
