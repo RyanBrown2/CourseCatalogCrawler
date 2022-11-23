@@ -12,7 +12,7 @@ export class CoursesRequirement implements Deserializable {
 	public type: string = '';
 	public reqs: CoursesRequirement[] = [];
 	public courses: string[] = [];
-	public exta: string = '';
+	public extra: string = '';
 
 	setType(type: string) {
 		this.type = type;
@@ -27,7 +27,7 @@ export class CoursesRequirement implements Deserializable {
 	}
 
 	setExtra(extra: string) {
-		this.exta = extra;
+		this.extra = extra;
 	}
 
 	deserialize(input: any): this {
@@ -37,4 +37,10 @@ export class CoursesRequirement implements Deserializable {
 
 		return this;
 	}
+}
+
+export enum ReqType {
+	All = "all",
+	Any = "or",
+	None = "none"
 }

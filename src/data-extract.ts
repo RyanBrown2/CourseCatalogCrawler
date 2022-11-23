@@ -27,7 +27,11 @@ export class DataExtract {
 		const prereqElement: Element = dom.window.document.querySelectorAll('.course ul li')[3];
 		var textArray = this.innerText(prereqElement);
 
-		course.prereqsText = textArray.join(" ").split(':')[1];
+		if (textArray.join(" ").split(':').length > 2) {
+			course.prereqsText = prereqElement.lastChild.textContent.replace(/^\s+|\s+$|\n/gm,'').split(',').join(' ,').split(':')[1];
+		} else {
+			course.prereqsText = textArray.join(" ").split(':')[1];
+		}
 		
 		return course;
 	}
@@ -79,17 +83,23 @@ export class DataExtract {
 				continue;
 			}
 
+			// separator for requirements
+			if (word == 'and') {
+				// If next word is a course, add it to the course array
+
+			}
+
 			if (word.includes('-')) { // if word is a course
 				prereqs.addCourse(word);
 				continue;
 
 			}
 
-			prereqs.setExtra(prereqs.exta + ' ' + word);
+			prereqs.setExtra(prereqs.extra + ' ' + word);
 
 		}
 
-		prereqs.setExtra(prereqs.exta.slice(1, prereqs.exta.length));
+		prereqs.setExtra(prereqs.extra.slice(1, prereqs.extra.length));
 
 		// if (beginText.includes('either'))
 
@@ -97,27 +107,32 @@ export class DataExtract {
 
 	}
 
+	// Check if the given text represents a course
+	isCourse(text: string): boolean {
+		return text.includes('-');
+	}
+
+	// Check if the given text indicates that there will be a new requirement
+	isNewReq(text: string): boolean {
+		if (text == 'either' || text == 'both') {
+			return true;
+		}
+		return false;
+	}
+
 	innerText(element: HTMLElement|Element): string[] {
 		function getTextLoop(element: HTMLElement|Element): string[] {
 			const texts: string[] = [];
 			Array.from(element.childNodes).forEach((node: HTMLElement) => {
 			if (node.nodeType === 3) {
-				// texts.push(node.textContent.trim());
-				// texts.push(node.textContent.replaceAll(/\s/g,''));
-				// texts.push(node.textContent);
 				var text;
 				if (node.textContent.includes(",")) {
 					text = `, ${node.textContent.replace(/^\s+|\s+$|\n|,+\s+/gm,'')}`;
-					// text = node.textContent.replace(/^\s+|\s+$|\n|,+\s+/gm,'');
 				} else {
 					text = node.textContent.replace(/^\s+|\s+$|\n/gm,'')
 				}
-				// console.log(text);
 				texts.push(text);
-				// console.log(node.textContent.replace(/^\s+|\s+$|\n/gm,''));
-				// texts.push(node.textContent.replace(/^\s+|\s+$|\n/gm,''));
 			} else {
-				// console.log(node);
 				texts.push(...getTextLoop(node));
 			}
 			});

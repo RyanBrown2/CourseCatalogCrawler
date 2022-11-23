@@ -37,6 +37,15 @@
 			"courses": [
 				343
 			]
+		},
+		{
+			"run": true,
+			"title": "Math",
+            "subDir": "Mathematics/",
+            "prefix": "ma",
+			"courses": [
+				415, 416
+			]
 		}
     ]
 }
