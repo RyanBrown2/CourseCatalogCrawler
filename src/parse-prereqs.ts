@@ -1,150 +1,227 @@
 import { CoursesRequirement, ReqType } from "./models/course-requirement.model";
 
 enum States {
-    Any, // Expecting the word to represent anything (course, part of sub-req, other)
-    Separator, // Expecting the word to represent a separator for requirements ("or", "and")
+	Any, // Expecting the word to represent anything (course, part of sub-req, other)
+	Separator, // Expecting the word to represent a separator for requirements ("or", "and")
+	Course, // Excpecting the word to represent a course
+	End, // We have reached the end of the word array
 }
 
 function isCourse(text: string): boolean {
-    return text.includes('-');
+	return text.includes('-');
 }
 
+// Note: assumes the text is lowercase
 function isSeparator(text: string): boolean {
-    if (text.toLowerCase() == 'and' || text.toLowerCase() == 'or' || text == ',') {
-        return true;
-    }
-    return false;
+	if (text.includes('and') || text.includes('or') || text.includes('both') || text.includes('either') || text.includes(',')) {
+		return true;
+	}
+	return false;
 }
 
 // based on the given word, should a new sub-prereq be started
 function checkNewPrereq(text: string): boolean {
 
-    return false;
+	return false;
 }
 
 function findNextComma(words: string[], startIndex: number): number {
-    return words.findIndex((w, i) => i >= startIndex && w ==',');
+	return words.findIndex((w, i) => i >= startIndex && w ==',');
 }
 
 function getPrereqType(text: string): ReqType {
-    if (text.toLowerCase().includes('or') || text.toLowerCase().includes('either')) {
-        return ReqType.Any;
-    } else if (text.toLowerCase().includes('and') || text.toLowerCase().includes('both')) {
-        return ReqType.All;
-    } else {
-        return ReqType.None;
-    }
+	if (text.toLowerCase().includes('or') || text.toLowerCase().includes('either')) {
+		return ReqType.Any;
+	} else if (text.toLowerCase().includes('and') || text.toLowerCase().includes('both')) {
+		return ReqType.All;
+	} else {
+		return ReqType.None;
+	}
+}
+
+function mainBranch(words: string[]): CoursesRequirement {
+
+	const prereqs: CoursesRequirement = new CoursesRequirement();
+
+	return prereqs;
+}
+
+class processSubPrereqContainer {
+	public prereq: CoursesRequirement;
+	public offset: number;
+}
+
+/*
+	this function will process the sub-prereq
+	it will iterate through the words array for the data to do so
+*/
+function processSubPrereq(words: string[]): processSubPrereqContainer {
+	// console.log(words);
+	const container: processSubPrereqContainer = new processSubPrereqContainer();
+	const prereq: CoursesRequirement = new CoursesRequirement();
+
+	container.offset = 2;
+
+	// the first word should indicate the type of this sub-prereq
+	const firstWord: string = words[0].toLowerCase();
+	prereq.setType(getPrereqType(firstWord));
+	
+	// we know that upon the first iteration, the previous state was a separator and the current state is a separator
+	let currentState: States = States.Any;
+	let pastState: States = States.Any;
+	let nextState: States = States.Any;
+
+	for (let i = 1; i < words.length; i++) { // start at second word
+		const word = words[i].toLowerCase();
+
+		// store the previous state
+		pastState = currentState;
+
+		// update the current state
+		currentState = nextState;
+
+		// find the next state
+		if (i + 1 >= words.length) { // End state
+			nextState = States.End;
+		} else { // we know that there is a next word (isn't null)
+			const nextWord = words[i+1].toLowerCase();
+			if (isSeparator(nextWord)) { // if the next word represents a separator
+				nextState = States.Separator;
+			} else if (isCourse(nextWord)) { // if the next word represents a course
+				nextState = States.Course;
+			} else { // word can be anything
+				nextState = States.Any;
+			}
+		}
+
+		container.offset++;
+
+		// if we have back to back separator states, then we are done processing for this sub-prereq
+		if (nextState == States.Separator && currentState == States.Separator) {
+			break;
+			// return prereq;
+		} else if (currentState == States.Course) {
+			prereq.addCourse(word);
+		} else if (currentState == States.Any) {
+			if (isCourse(word)) {
+				prereq.addCourse(word);
+			} else {
+				prereq.setExtra(prereq.extra + ' ' + word);
+			}
+		}
+
+		// if (isCourse(word)) {
+		// 	prereq.addCourse(word);
+		// } else {
+		// 	prereq.setExtra(prereq.extra + ' ' + word);
+		// }
+
+	}
+	
+	container.prereq = prereq;
+
+	return container;
 }
 
 function processPrereqWords(words: string[]): CoursesRequirement {
-    const prereqs: CoursesRequirement = new CoursesRequirement();
-    prereqs.setType(ReqType.None);
-    
-    let state: States = States.Any;
-    for (let i = 0; i < words.length; i++) {
-        let word = words[i].toLowerCase();
-        
-        if (state == States.Any) {
-            if (isCourse(word)) {
-                prereqs.addCourse(word);
-                state = States.Separator; // the next word is expected to be a separator
-                continue;
-            } else if (word.includes('both') || word.includes('either')) {
-                // prereqs.setType(getPrereqType(word));
+	const prereqs: CoursesRequirement = new CoursesRequirement();
+	prereqs.setType(ReqType.None);
+	
+	let currentState: States = States.Any;
+	let pastState: States = null;
+	let nextState: States = States.Any;
 
-                let endReq: number = findNextComma(words, i+1); // this is the index of the next comma, which is where a new sub-req will begin
+	// split up the current word array into multiple sub arrays
+	// each sub array will be converted to a CourseRequirement
+	// and then added to this prereq
+	let subReqs: string[][] = [];
 
-                let newReqWords: string[] = [];
-                if (endReq == -1) {
-                    newReqWords = words.slice(i+2, words.length);
-                    i = words.length;
-                } else {
-                    newReqWords = words.slice(i+2, endReq-1);
-                    i = endReq;
-                }
+	for (let i = 0; i < words.length; i++) {
+		const word = words.at(i).toLowerCase();
+		if (word.length < 1) {
+			continue;
+		}
 
-                prereqs.addReq(processPrereqWords(newReqWords));
+		// store the previous state
+		pastState = currentState;
 
-                state = States.Any;
+		// update the current state
+		currentState = nextState;
 
-                continue;
-            } else if (isSeparator(word)) {
-                prereqs.setType(getPrereqType(word));
-                continue;
-            } else { // If not anything, then it is likely apart of the extra
-                prereqs.setExtra(prereqs.extra + ' ' + word);
-                continue;
-            }
-        } else if (state == States.Separator) {
-            if (!isSeparator(word)) {
-                console.warn(`Not a separator: ${word}`);
-                continue;
-            }
+		// find the next state
+		if (i + 1 >= words.length) { // End state
+			nextState = States.End;
+		} else { // we know that there is a next word (isn't null)
+			const nextWord = words[i+1].toLowerCase();
+			if (isSeparator(nextWord)) { // if the next word represents a separator
+				nextState = States.Separator;
+			} else if (isCourse(nextWord)) { // if the next word represents a course
+				nextState = States.Course;
+			} else { // word can be anything
+				nextState = States.Any;
+			}
+		}
 
-            if (word.toLowerCase() == 'and') {
-                prereqs.setType(ReqType.All);
-                state = States.Any;
-            } else if (word.toLowerCase() == 'or') {
-                prereqs.setType(ReqType.Any);
-                state = States.Any;
-            } else if (word == ',') { // this indicates a new sub-req
-                prereqs.setType(getPrereqType(words[i+1]))
-                let endReq: number = findNextComma(words, i+1); // this is the index of the next comma, which is where a new sub-req will begin
 
-                let newReqWords: string[] = [];
-                if (endReq == -1) {
-                    newReqWords = words.slice(i+2, words.length);
-                    i = words.length;
-                } else {
-                    newReqWords = words.slice(i+2, endReq-1);
-                    i = endReq;
-                }
+		// if this state is a separator and the previous state is a separator, then
+		// we should start a new sub-prereq
+		// the prereq ends when there is once again two back to back separators
+		if (nextState == States.Separator && currentState == States.Separator) {
+			prereqs.setType(getPrereqType(word));
+			const prereqContainer: processSubPrereqContainer = processSubPrereq(words.slice(i+1));
+			i += prereqContainer.offset;
+			// console.log(`Moving i to: ${i}`);
+			prereqs.addReq(prereqContainer.prereq);
+			break;
+		} else if (currentState == States.Course) {
+			prereqs.addCourse(word);
+		} else if (currentState == States.Any) {
+			if (isCourse(word)) {
+				prereqs.addCourse(word);
+			} else {
+				prereqs.setExtra(prereqs.extra + ' ' + word);
+			}
+		} else if (currentState == States.Separator) {
+			prereqs.setType(getPrereqType(word));
+		}
 
-                prereqs.addReq(processPrereqWords(newReqWords));
+	}
 
-                state = States.Any;
+	if (prereqs.type == ReqType.None) {
+		prereqs.setType(ReqType.All);
+	}
+	
+	prereqs.setExtra(prereqs.extra.replace(' ', ''));
 
-                // TODO handle sub-reqs
 
-            }
-
-            state = States.Any;
-            
-        }
-
-    }
-
-    if (prereqs.type == ReqType.None) {
-        // prereqs.setType(ReqType.All);
-    }
-    
-    prereqs.setExtra(prereqs.extra.replace(' ', ''));
-
-    return prereqs;
+	return prereqs;
 }
 
 export function ParsePrereqs(text: string): CoursesRequirement {
-    // const prereqs: CoursesRequirement = new CoursesRequirement();
+	// const prereqs: CoursesRequirement = new CoursesRequirement();
+	let procText: string = text;
+	if (text.charAt(0) == ' ') {
+		procText = text.slice(1);
+	}
+	let words: string[] = [];
+	let bufText: string = '';
+	for (let i = 0; i < procText.length; i++) {
+		const indexChar: string = procText.charAt(i);
+		if (indexChar == ' ') { // New word
+			words.push(bufText);
+			bufText = '';
+			continue;
+		} else {
+			bufText += indexChar;
+		}
+	}
 
-    let words: string[] = [];
-    let bufText: string = '';
-    for (let i = 0; i < text.length; i++) {
-        const indexChar: string = text.charAt(i);
-        if (indexChar == ' ') { // New word
-            words.push(bufText);
-            bufText = '';
-            continue;
-        } else {
-            bufText += indexChar;
-        }
-    }
 
+	// for (let i = 0; i < words.length; i++) {
 
-    // for (let i = 0; i < words.length; i++) {
+	// }
 
-    // }
+	const prereqs: CoursesRequirement = processPrereqWords(words);
 
-    const prereqs: CoursesRequirement = processPrereqWords(words);
-
-    return prereqs;
+	return prereqs;
 }
